@@ -25,8 +25,15 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run dynamic test routing
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
         run: |
-          python scripts/route_tests.py --changed-files src/cart.py src/inventory.py src/pricing.py
+          if [ -z "$BASE_SHA" ] || [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            pytest --junitxml=test-results.xml
+          else
+            python scripts/route_tests.py --base "$BASE_SHA" --head "$HEAD_SHA"
+          fi
 
       - name: Upload test report
         if: always()
