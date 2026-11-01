@@ -11,9 +11,6 @@ ROUTES = {
     "src/pricing.py": ["tests/test_pricing.py"],
 }
 
-ALL_TESTS = ["tests"]
-
-
 def select_tests(changed_files):
     selected = set()
 
@@ -21,29 +18,41 @@ def select_tests(changed_files):
         if file in ROUTES:
             selected.update(ROUTES[file])
         else:
-            return ALL_TESTS
+            return ["tests"]
 
-    return sorted(selected) if selected else ALL_TESTS
+    return sorted(selected) if selected else ["tests"]
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--changed-files", nargs="*")
+    parser.add_argument("--base", required=True)
+    parser.add_argument("--head", required=True)
     args = parser.parse_args()
 
-    if args.changed_files is None:
-        parser.error("Please provide changed files")
+    result = subprocess.run(
+        ["git", "diff", "--name-only", args.base, args.head],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=True
+    )
 
-    tests = select_tests(args.changed_files)
+    changed = result.stdout.splitlines()
+    selected = select_tests(changed)
 
-    print("Changed files:", args.changed_files)
-    print("Selected tests:", tests)
+    print("Changed files:", changed)
+    print("Selected tests:", selected)
 
     return subprocess.call(
-        [sys.executable, "-m", "pytest", *tests],
+        [sys.executable, "-m", "pytest", *selected,
+         "--junitxml=test-results.xml"],
         cwd=ROOT
     )
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+
+
